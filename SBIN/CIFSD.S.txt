@@ -1,8 +1,8 @@
 NEW
-  AUTO 3,1								Enable MASM3 auto line num
+  AUTO 3,1
 				.LIST OFF
-				.OP	65C02				Target CPU, must match CPU level in header
-				.OR	$2000				usualy $2000, but any value > $100 allowed
+				.OP	65C02
+				.OR	$2000
 				.TF sbin/cifsd
 *--------------------------------------
 AUTH			.EQ 0
@@ -12,8 +12,7 @@ AUTH			.EQ 0
 				.INB inc/kernel.i
 				.INB inc/mli.e.i
 				.INB inc/eth.i
-				.INB inc/libtcpip.i
-				.INB inc/net.tcpip.i
+				.INB inc/ip.i
 				.INB inc/net.smb.i
 				.DO AUTH
 				.INB inc/libcrypt.i
@@ -36,6 +35,8 @@ ZPPtr2			.BS 2
 pPath			.BS 2
 pFD				.BS 2
 
+
+
 ZS.END			.ED
 *--------------------------------------
 *			File Header (16 Bytes)
@@ -43,31 +44,33 @@ ZS.END			.ED
 CS.START		cld
 				jmp (.1,x)
 				.DA #$61				6502,Level 1 (65c02)
-				.DA #1					BIN Layout Version 1
-				.DA #S.PS.F.EVENT
+				.DA #2					BIN Layout Version 2
+				.DA #S.PS.SIG.T1SEC
 				.DA #0
-				.DA CS.END-CS.START		Code Size (without Constants)
-				.DA DS.END-DS.START		Data SegmentSize
+				.DA CS.END
+				.DA ID.END
+				.DA DS.END
 				.DA #64					Stack Size
 				.DA #ZS.END-ZS.START	Zero Page Size
-				.DA 0
 *--------------------------------------
 * Relocation Table
 *--------------------------------------
 .1				.DA CS.INIT
 				.DA CS.RUN
-				.DA CS.DOEVENT
+				.DA CS.SIG
 				.DA	CS.QUIT
-L.LIBTCPIP		.DA LIBTCPIP
+*--------------------------------------
 				.DO AUTH
 L.LIBCRYPT		.DA LIBCRYPT
 				.FIN
+*--------------------------------------
 L.MSG.USAGE		.DA MSG.USAGE
-L.MSG.TCPIPERR	.DA MSG.TCPIPERR
 L.MSG.UNKNOWN	.DA MSG.UNKNOWN
 L.MSG.CONNECTED	.DA MSG.CONNECTED
 L.MSG.NOCONN	.DA MSG.NOCONN
 L.MSG.MOUNTED	.DA MSG.MOUNTED
+*--------------------------------------
+L.SA.LOCAL		.DA SA.LOCAL
 *--------------------------------------
 L.NETBIOS.H		.DA NETBIOS.H
 L.IO.CallBack	.DA IO.CallBack
@@ -187,22 +190,15 @@ J.IO.R			.DA A2osX.BADCALL
 * Called once at process creation
 * Put code for loading LIB here
 *--------------------------------------
-CS.INIT			>LDYA L.LIBTCPIP
-				>KAPI LoadLib
-				bcs .9
-
-				sta hLIBTCPIP
-				>SYSCALL2 GetMemPtr
-				>STYA pLIBTCPIP
-
-				.DO AUTH
+CS.INIT			.DO AUTH
 				>LDYA L.LIBCRYPT
 				>KAPI LoadLib
 				bcs .9
 
 				sta hLIBCRYPT
 				.FIN
-*				clc
+
+				clc
 .9				rts
 *--------------------------------------
 * Called until exit with CS
@@ -223,6 +219,7 @@ CS.RUN			lda hSocket
 				jsr INIT.Setup
 				bcs .9
 
+				>SS
 				>PUSHW L.MSG.MOUNTED
 
 				lda #2
@@ -235,45 +232,15 @@ CS.RUN			lda hSocket
 
 				>PUSHBI 4
 				>LIBC PrintF
+				>SR
 
 .8				lda #0
 				clc
 .9				rts
 *--------------------------------------
 CS.RUN.CheckTCPIP
-				>LIBCALL hLIBTCPIP,LIBTCPIP.GETCFG	is TCPIP loaded ?
-				bcs .9
-
-				>STYA ZPPtr1
-				lda (ZPPtr1)		Configured ?
-				bmi .1
-
-				>LDYA L.MSG.TCPIPERR
-				>LIBC PutS
-
-				lda #E.SYN
-				sec
-.9				rts
-
-.1				lda #AF.INET
-				>STA.G SA.LOCAL
+				lda #AF.INET
 				>STA.G SA.REMOTE
-
-				ldy #S.IPCFG.IP+3
-
-.3				lda (ZPPtr1),y
-				pha
-				dey
-				cpy #S.IPCFG.IP-1
-				bne .3
-
-				ldy #SA.LOCAL+S.SOCKADDR.ADDR
-
-.4				pla
-				sta (pData),y
-				iny
-				cpy #SA.LOCAL+S.SOCKADDR.ADDR+4
-				bne .4
 
 				lda #TCP.PORT.CIFS
 				>STA.G SA.REMOTE+S.SOCKADDR.PORT
@@ -299,23 +266,40 @@ CS.RUN.CheckArgs
 .1				lda #TIMEOUT.MAX
 				sta TimeOut
 
-.2				>PUSHEA.G SA.REMOTE+S.SOCKADDR.ADDR
 				lda #1
 				>KAPI ArgV
-				>PUSHYA
-				>LIBCALL hLIBTCPIP,LIBTCPIP.HST.GetByName
+				bcs .9
+
+				>STYA R1
+
+.2				>SLEEP
+
+				>SS
+				>PUSHW R1
+				>PUSHWZ
+				>PUSHWZ
+				>PUSHEA.G pAI
+				>LIBC GetAddrInfo
+				>SR
 				bcc .3
 
 				>SLEEP
 				lda TimeOut
 				bne .2
 
+				cmp #GAI.E.AGAIN
+				bne .3
+
+				lda TimeOut
+				bne .2
+
+.3				>SS
 				>PUSHW L.MSG.UNKNOWN
-				lda #1
-				>KAPI ArgV
-				>PUSHYA
+				>PUSHW R1
 				>PUSHBI 2
 				>LIBC PrintF
+				>SR
+
 				lda #ERR.SKT.NOCONN
 				sec
 				rts
@@ -332,55 +316,64 @@ CS.RUN.CheckArgs
 CS.RUN.CheckArgs.RTS
 				rts
 *--------------------------------------
-CS.RUN.Connect	>PUSHBI S.SOCKET.T.SEQPKT
-				>PUSHBI 0				no protocol
-				>LIBCALL hLIBTCPIP,LIBTCPIP.Socket
+CS.RUN.Connect	>SS
+				>PUSHWI AF_INET
+				>PUSHWI SOCK_SEQPKT
+				>PUSHWZ
+				>LIBC Socket
+				>SR
 				bcs .9
 
-				sta hSocket
+				>STYA hSocket
 
-				>PUSHA
-				>PUSHEA.G SA.LOCAL
-				>LIBCALL hLIBTCPIP,LIBTCPIP.Bind
+				>SS
+				>PUSHW hSocket
+				>PUSHW L.SA.LOCAL
+				>PUSHWI S.SA.IN
+				>LIBC Bind
+				>SR
 				bcs .9
 
 				lda #TIMEOUT.MAX
 				sta TimeOut
 
-.1				>SLEEP
+.3				>SLEEP
 
-				>PUSHB hSocket
+				>SS
+				>PUSHW hSocket
 				>PUSHEA.G SA.REMOTE
-				>LIBCALL hLIBTCPIP,LIBTCPIP.Connect
+				>PUSHWI S.SA.IN
+				>LIBC Connect
+				>SR
 				bcc .8
+
+				cmp #SKT.E.NOCONN
+				bne .9
 
 				ldx TimeOut
 				bne .1
 
 .9				pha
 
+				>SS
 				>PUSHW L.MSG.NOCONN
-				lda #1
-				>KAPI ArgV
-				>PUSHYA
+				>PUSHW R1
 				>PUSHBI 2
-
+				>LIBC PrintF
+				>SR
 				pla
 				sec
 				rts
 
-.8				>PUSHW L.MSG.CONNECTED
-				lda #1
-				>KAPI ArgV
-				>PUSHYA
+.8				>SS
+				>PUSHW L.MSG.CONNECTED
+				>PUSHW R1
 				>PUSHBI 2
 				>LIBC PrintF
+				>SR
 				rts
 *--------------------------------------
-CS.DOEVENT		lda (pEvent)
-				bpl .9					is it a TIMER event?
-
-				lda TimeOut
+CS.SIG			lda TimeOut
 				beq .9
 
 				dec TimeOut
@@ -393,25 +386,24 @@ CS.QUIT			lda hMount
 
 				>LIBC UMount
 
-.1				lda hSocket
+.1				ldy hSocket
 				beq .2
 
-				>LIBCALL hLIBTCPIP,LIBTCPIP.Shutdown
+				lda hSocket+1
+
+				>LIBC Shutdown
 
 .2				lda hSMBContext
 				beq .3
 
-				>LIBC FreeMem
+				>LIBC Free
 
 .3				.DO AUTH
 				lda hLIBCRYPT
-				jsr .7
-				.FIN
-
-				lda hLIBTCPIP
 .7				beq .8
 
 				>KAPI UnloadLib
+				.FIN
 
 .8				clc
 				rts
@@ -424,20 +416,21 @@ CS.END
 *--------------------------------------
 * Initialized DATA
 *--------------------------------------
-LIBTCPIP		.AZ "libtcpip"
-hLIBTCPIP		.BS 1
-pLIBTCPIP		.BS 2
+
 				.DO AUTH
 LIBCRYPT		.AZ "libcrypt"
 hLIBCRYPT		.BS 1
 				.FIN
 *--------------------------------------
 MSG.USAGE		.AZ "Usage : CIFSD <ip|host> sharename mountpoint [[domain\]user]"
-MSG.TCPIPERR	.CZ "CIFSD:TCP/IP Not initialized properly."
 MSG.UNKNOWN		.CZ "CIFSD:%s: Unknown host\r\n"
 MSG.NOCONN		.CZ "CIFSD:No Connection To %s\r\n"
 MSG.CONNECTED	.CZ "CIFSD:Connected To %s\r\n"
 MSG.MOUNTED		.CZ "CIFSD:%s Mounted As %s\r\n"
+*--------------------------------------
+SA.LOCAL		.DA AF_INET
+				.DA #0,#0,#0,#0			any address
+				.DA 0
 *--------------------------------------
 PRODOS.FT.HEX	.HS 0406FAFCFDCBCCCFFF
 PRODOS.FT.TXT	.AZ "txt"
@@ -666,7 +659,7 @@ CIFS.Status		.BS 1
 CIFS.PID		.BS 1
 CIFS.Cnt		.BS 2
 *--------------------------------------
-hSocket			.BS 1
+hSocket			.BS 2
 hSMBContext		.BS 1
 hMount			.BS 1
 hReq			.BS 1
@@ -683,19 +676,15 @@ StatBuf			.BS S.STAT
 SaveYA			.BS 2
 SaveZP			.BS ZS.END-ZS.START
 *--------------------------------------
+ID.END			.EQ *
+*--------------------------------------
 				.DUMMY
 				.OR 0
-DS.START
-SA.LOCAL		.BS 1					S.SOCKADDR.AF
-				.BS 1
-				.BS 4					S.SOCKADDR.ADDR
-				.BS 2					S.SOCKADDR.PORT
-SA.REMOTE		.BS 1					S.SOCKADDR.AF
-				.BS 1
-				.BS 4					S.SOCKADDR.ADDR
-				.BS 2					S.SOCKADDR.PORT
-DS.END
-				.ED
+
+pAI				.BS 2
+SA.REMOTE		.BS S.SA.IN
+*--------------------------------------
+DS.END			.ED
 *--------------------------------------
 MAN
 SAVE usr/src/sbin/cifsd.s

@@ -53,7 +53,6 @@ CC.Link			>LDYA L.MSG.LINKING
 				jmp .1
 
 .8				clc
-*			>DEBUG
 			
 				rts
 

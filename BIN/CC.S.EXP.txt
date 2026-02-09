@@ -7,16 +7,14 @@ NEW
 * Output:
 *   CS, A = EC
 *--------------------------------------
-EXP.Eval00		lda #0
-				tay
+EXP.Eval00		lda #0					#SYM.T
+				sta (ZP.pLSymBuf)
+				ldy #SYM.Q
+				sta (ZP.pLSymBuf),y
 
-EXP.Eval
-*				ldx ZPPtr1				local :
-*				phx
-*				ldx ZPPtr1+1
-*				phx
+				>LDYA ZP.pLSymBuf		target
 
-				ldx ZPPtr2				local : pLSym
+EXP.Eval		ldx ZPPtr2				local : pLSym
 				phx
 				ldx ZPPtr2+1
 				phx
@@ -28,12 +26,10 @@ EXP.Eval
 
 				>STYA ZPPtr2			target pLSym
 
-*				stz ZPPtr1
-*				stz ZPPtr1+1
-
-				lda #$ff				no previous OP
-				sta ZPPtr3+1			no PREOPS
-				pha
+				lda #$ff
+				pha						no previous BOP
+				sta ZPPtr3				no BOP
+				sta ZPPtr3+1			no PREOP
 *--------------------------------------
 .10				jsr CC.GetCharNB
 				bcs .19
@@ -108,7 +104,7 @@ EXP.Eval
 				and #SYM.Q.FUNCTION
 				bne .21
 
-				jsr EXP.GetVar			Check type, Get value & set ExpState
+				jsr EXP.GetVar			Check type, Get value & set State
 				bcs .29
 
 				bra .30
@@ -205,11 +201,6 @@ EXP.Eval.ExitErr
 				plx
 				stx ZPPtr2
 
-*				plx
-*				stx ZPPtr1+1
-*				plx
-*				stx ZPPtr1
-
 				rts
 *--------------------------------------
 EXP.TYPEQUALJMP	jmp (J.CC.TYPEQUAL,x)
@@ -218,6 +209,7 @@ EXP.TYPEQUALJMP	jmp (J.CC.TYPEQUAL,x)
 *--------------------------------------
 EXP.BOPS		ldy #SYM.Q
 				lda (ZPPtr2),y
+
 				bit #SYM.Q.PPPOINTER
 				beq .10
 
@@ -249,6 +241,7 @@ EXP.BOPS		ldy #SYM.Q
 				clc
 				adc CC.Type2FPU-SYM.T.UINT,y
 				tax
+
 				jsr CODE.FPUCALL
 
 				clc
@@ -355,22 +348,22 @@ EXP.GetNum		lda (ZPPtr2)			#SYM.T
 .3				>SR
 				bcs .99
 
-				ldy #SYM.Q				anticipate 2 bytes if *
+				ldy #SYM.Q
 				lda (ZPPtr2),y
+				ldy #2					anticipate 2 bytes if *
 				and #SYM.Q.PPPOINTER
 				bne .5
 
 				lda (ZPPtr2)			#SYM.T
+
 				tax
-				lda CC.TYPESIZE-1,x
+				ldy CC.TYPESIZE-1,x
 
-				dec
-				tay
-
-.5				lda (pStack),y
+.5				dey
+				lda (pStack),y
 				jsr CODE.PUSHI
-				dey
-				bpl .5
+				tya
+				bne .5
 
 				lda #4
 
@@ -378,8 +371,8 @@ EXP.GetNum		lda (ZPPtr2)			#SYM.T
 				adc pStack
 				sta pStack
 
-				lda #ExpState.VonStack
-				tsb ExpState
+				lda #State.RVonStack
+				tsb State
 
 				clc						adc pStack may set CS !!!!
 
@@ -434,8 +427,8 @@ EXP.AddConstCharP
 				jsr CODE.EmitPCC
 				bcs .99
 
-				lda #ExpState.VinReg
-				sta ExpState
+				lda #State.RVinReg
+				sta State
 
 				jsr CODE.IDSelect
 				bcs .99
@@ -478,7 +471,7 @@ EXP.AddConstCharP
 * ZPPtr2 = Target pLSym
 * ZPPtr3+1 = PREOPS
 *--------------------------------------
-EXP.GetVar		stz ExpState
+EXP.GetVar		stz State
 
 				jsr EXP.POSTOPS			var++, var[0]... ?
 				bcs .99
@@ -490,7 +483,7 @@ EXP.GetVar		stz ExpState
 				jsr EXP.CheckType
 				bcs .99
 
-				lda ExpState
+				lda State
 				bne .8
 
 				jsr EXP.GetAddr2		Load ZS.RT.Ptr2 with var address
@@ -501,8 +494,8 @@ EXP.GetVar		stz ExpState
 				dey
 				bne .1
 
-				lda #ExpState.VinReg
-				tsb ExpState
+				lda #State.RVinReg
+				tsb State
 
 				>LDYA L.PCC.GetValueA
 				jmp CODE.EmitPCC
@@ -510,14 +503,14 @@ EXP.GetVar		stz ExpState
 .1				cpy #1
 				bne .2
 
-				lda #ExpState.VinReg
-				tsb ExpState
+				lda #State.RVinReg
+				tsb State
 
 				>LDYA L.PCC.GetValueYA
 				jmp CODE.EmitPCC
 
-.2				lda #ExpState.VonStack
-				tsb ExpState
+.2				lda #State.RVonStack
+				tsb State
 
 				jsr CODE.LDYI
 				bcs .99
@@ -535,20 +528,20 @@ EXP.POSTOPS		>LDYA L.CC.POSTOPS
 				jsr CC.LookupOP
 				bcs .8
 
-				jmp (J.CC.POSTOPS,x)
+				jmp (J.EXP.POSTOPS,x)
 
 .8				clc
 				rts
 *--------------------------------------
-EXP.PostInc		lda ExpState
-				bit #ExpState.AinPTR
+EXP.PostInc		lda State
+				bit #State.RAinPtr2
 				bne .1
 
 				jsr EXP.GetAddr2
 				bcs .99
 
-				lda #ExpState.AinPTR
-				tsb ExpState
+				lda #State.RAinPtr2
+				tsb State
 
 .1				ldy #SYM.Q
 				lda (ZP.pRSymBuf),y
@@ -584,15 +577,15 @@ EXP.PostInc		lda ExpState
 				sec
 .99				rts
 *--------------------------------------
-EXP.PostDec		lda ExpState
-				bit #ExpState.AinPTR
+EXP.PostDec		lda State
+				bit #State.RAinPtr2
 				bne .1
 
 				jsr EXP.GetAddr2
 				bcs .99
 
-				lda #ExpState.AinPTR
-				tsb ExpState
+				lda #State.RAinPtr2
+				tsb State
 
 .1				ldy #SYM.Q
 				lda (ZP.pRSymBuf),y
@@ -628,11 +621,11 @@ EXP.PostDec		lda ExpState
 				sec
 .99				rts
 *--------------------------------------
-EXP.Idx			ldy #SYM.Q
+EXP.Array		ldy #SYM.Q
 				lda (ZP.pRSymBuf),y
 
 				bit #SYM.Q.AAARRAY
-				bne EXP.array
+				bne EXP.ArrayBounds
 
 				and #SYM.Q.PPPOINTER
 				cmp #SYM.Q.POINTER
@@ -649,7 +642,7 @@ EXP.Idx			ldy #SYM.Q
 				jsr CODE.EmitPCC
 				bcs .99
 
-				jsr EXP.array.getIdx	...int16 on stack...
+				jsr EXP.Array.getIdx	...int16 on stack...
 				bcs .99
 
 				jsr EXP.GetRSymSizeOf
@@ -678,8 +671,8 @@ EXP.Idx			ldy #SYM.Q
 
 				jsr CORE.GetNCharNB	skip ']'
 
-				lda #ExpState.AonStack
-				sta ExpState
+				lda #State.RAonStack
+				sta State
 
 				clc
 				rts
@@ -692,12 +685,12 @@ EXP.Idx			ldy #SYM.Q
 				sec
 .99				rts
 *--------------------------------------
-EXP.array		ldy #SYM.A1
+EXP.ArrayBounds	ldy #SYM.A1
 				lda (ZP.pRSymBuf),y
 				iny
 				ora (ZP.pRSymBuf),y
 				beq .1
-*			jsr CODE.DEBUG
+
 				jsr EXP.PushAddr		array[int]...
 				bcc .2
 
@@ -710,7 +703,7 @@ EXP.array		ldy #SYM.A1
 				jsr CODE.EmitPCC
 				bcs .9
 
-.2				jsr EXP.array.getIdx	...int16 on stack...
+.2				jsr EXP.Array.getIdx	...int16 on stack...
 				bcs .9
 
 				jsr EXP.GetRSymSizeOf
@@ -739,7 +732,7 @@ EXP.array		ldy #SYM.A1
 				and #SYM.Q.AAARRAY
 				beq .99
 
-				jsr EXP.array.getIdx	...int16 on stack...
+				jsr EXP.Array.getIdx	...int16 on stack...
 				bcs .9
 
 				ldy #SYM.A2+1
@@ -769,8 +762,8 @@ EXP.array		ldy #SYM.A1
 
 * TODO : [][][]
 
-.8				lda #ExpState.AonStack
-				sta ExpState
+.8				lda #State.RAonStack
+				sta State
 
 				clc
 				rts
@@ -783,10 +776,17 @@ EXP.array		ldy #SYM.A1
 				sec
 .9				rts
 *--------------------------------------
-EXP.array.getIdx
-				ldy #SYM.T.SINT
-				lda #0
+EXP.Array.GetIdx
+				jsr SYM.NextRBuf
 
+				lda #SYM.T.SINT
+				sta (ZP.pRSymBuf)		#SYM.T
+
+				lda #0
+				ldy #SYM.Q
+				sta (ZP.pRSymBuf),y
+
+				>LDYA ZP.pRSymBuf
 				jsr EXP.Eval
 				bcs .9
 
@@ -796,11 +796,7 @@ EXP.array.getIdx
 				cmp #']'
 				bne .98
 
-				ldy #SYM.Q
-				lda (ZP.pRSymBuf),y
-				sec
-				sbc #SYM.Q.ARRAY
-				sta (ZP.pRSymBuf),y
+				jsr SYM.PrevRBuf
 
 				clc
 				rts
@@ -860,29 +856,28 @@ EXP.pSU			lda #E.ESYN
 *--------------------------------------
 EXP.PREOPS		bmi .8
 
-				jmp (J.CC.PREOPS,x)
+				jmp (J.EXP.PREOPS,x)
 
 .8				clc
 				rts
 *--------------------------------------
 EXP.Ref			ldy #SYM.Q
 				lda (ZP.pRSymBuf),y
-
 				clc
 				adc #SYM.Q.POINTER
 				bcs .9					more than ***
 
-*				and #%11001111
+				and #$FF^SYM.Q.AAARRAY
 				sta (ZP.pRSymBuf),y
 
-				bit ExpState
+				bit State
 				bvs .8
 
 				jsr EXP.PushAddr
 				bcs .99
 
-.8				lda #ExpState.VonStack
-				sta ExpState
+.8				lda #State.RVonStack
+				sta State
 
 *				clc						Addr on stack
 				rts
@@ -907,8 +902,8 @@ EXP.Deref		ldy #SYM.Q
 				jsr CODE.EmitPCC
 				bcs .99
 
-				lda #ExpState.AinPTR
-				sta ExpState
+				lda #State.RAinPtr2
+				sta State
 
 *				clc
 				rts
@@ -1067,25 +1062,36 @@ EXP.GetYASizeOfInAX
 * ZP.pRSymBuf = Expression
 *--------------------------------------
 EXP.CheckType	lda ZPPtr2+1			any target type ?
-				beq .8
+				bne .10
 
-				lda (ZPPtr2)
+.10				lda (ZPPtr2)
 				cmp #SYM.T.VARIADIC
 				beq .8					Variadic accepts anything
 
-				lda (ZP.pRSymBuf)		SYM.T
+				lda (ZP.pRSymBuf)
+				sta (ZPPtr2)
+
+				ldy #SYM.Q
+				lda (ZP.pRSymBuf),y
+				sta (ZPPtr2),y
+
+				clc
+				rts
+*--------------------------------------
+				lda (ZPPtr2)			L SYM.T
 				cmp #SYM.T.VOID
 				beq .2
 
-				cmp (ZPPtr2)
-				bne .9
-*			>DEBUG
-*				ldy #SYM.Q
+				lda (ZP.pRSymBuf)		R SYM.T
+				cmp #SYM.T.VOID
+				beq .2
+
+				ldy #SYM.Q
 *				lda (ZPPtr2),y
 *				and #SYM.Q.CONST
-*				bne .9					cannot write CONST
+*				beq .1					cannot write CONST
 
-				lda (ZP.pRSymBuf),y
+.1				lda (ZP.pRSymBuf),y
 				eor (ZPPtr2),y
 				and #$F0				ignore CONST|VOLATILE|RESTRICT|FUNCTION
 				bne .9
@@ -1094,7 +1100,7 @@ EXP.CheckType	lda ZPPtr2+1			any target type ?
 				rts
 
 .2				ldy #SYM.Q
-				lda (ZP.pRSymBuf),y
+				lda (ZPPtr2),y
 				eor (ZP.pRSymBuf),y
 				and #$F8				ignore VOLATILE|RESTRICT|FUNCTION
 				beq .8
@@ -1102,7 +1108,7 @@ EXP.CheckType	lda ZPPtr2+1			any target type ?
 				and #SYM.Q.AAARRAY		is mismatch about array ?
 				beq .9					no...
 
-				lda ZPPtr2+1			Q
+				lda (ZPPtr2),y
 				and #SYM.Q.AAARRAY
 				bne .9
 

@@ -170,13 +170,43 @@ STAT.Local		jsr PRODOS.Stat			/localdir/file or /MNTVOL/dir/file
 				bcc .99
 
 				cmp #MLI.E.VNOTFND
-				bne .9
+				bne .98
 
-				jmp PASCAL.Stat
+				ldx #0
+				
+.2				lda A2osX.pFSs+1,x
+				beq .4
 
-.9				sec
+				ldy A2osX.pFSs,x
+				
+				>STYA .3+1
+				
+				phx
+				
+				ldx #2					KM.Stat
+				
+.3				jsr $FFFF				SELF MODIFIED				
+				
+				plx
+
+				bcc .8
+				
+				cmp #MLI.E.VNOTFND
+				bne .98
+				
+.4				inx
+				inx
+				cpx #8
+				bcc .2
+				
+				lda #MLI.E.VNOTFND
+
+.98				sec
 
 .99				rts
+
+.8				clc
+				rts
 */-------------------------------------
 * # MKDir
 * create a directory

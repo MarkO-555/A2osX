@@ -279,7 +279,7 @@ PRODOS.Write	ldx #MLI.WRITE
 				lda #4					Param Count = 4 for MLIREAD & MLIWRITE
 				sta K.MLI.PARAMS
 
-				lda A2osX.IOOpt				AUX ?
+				lda A2osX.IOOpt			AUX ?
 				sta MLI.IOBANK
 
 				jsr MLI
@@ -351,8 +351,11 @@ FS.MLIOPEN		>LDYAI 1024				get a ProDOS IOBUF
 				bcs FS.RTS
 
 				>STYA K.MLI.PARAMS+3	Save Ptr to IOBUF for MLIOPEN call
-				ldy #S.FD.REG.IOBUF
-				sta (pFD),y				save HI byte only
+				ldy #S.FD.REG.IOBUF+1
+				sta (pFD),y
+				dey
+				lda #0
+				sta (pFD),y
 
 				>MLICALL MLI.OPEN
 				bcs FS.RTS
@@ -371,15 +374,23 @@ FS.MLICLOSE		ldy #S.FD.REG.REF
 				lda (pFD),y
 				bmi .1					if special DIR
 
+				cmp #$40				EXT.FS
+				bcs .1
+
 				sta K.MLI.PARAMS+1
 				>MLICALL MLI.CLOSE
 				bcs FS.RTS
 
-.1				ldy #S.FD.REG.IOBUF		HI byte only, page aligned
+.1				ldy #S.FD.REG.IOBUF+1
 				lda (pFD),y
 				beq .8
 
-				ldy #0					LO byte always 0
+				pha
+				dey
+				lda (pFD),y
+				tay
+				pla
+
 				jmp MEM.FreeYA
 
 .8				clc

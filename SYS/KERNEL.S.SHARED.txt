@@ -110,8 +110,8 @@ X.ClrStat		ldx #S.STAT-1
 				dex
 				bpl .1
 
-				lda A2osX.FSID
-				sta K.S.STAT+S.STAT.FSID
+*				lda A2osX.FSID
+*				sta K.S.STAT+S.STAT.FSID
 
 				lda #2
 				sta K.S.STAT+S.STAT.BLKSIZE+1		= 512 bytes

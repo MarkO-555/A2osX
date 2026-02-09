@@ -76,7 +76,7 @@ CODE.Quit		>LDYA.G CC.pOutFile
 				rts
 *--------------------------------------
 CODE.AddLocal	cmp #0
-*				beq .8
+				beq .8
 
 				eor #$FF
 				inc
@@ -91,8 +91,8 @@ CODE.AddLocal	cmp #0
 .9				rts
 *--------------------------------------
 CODE.RemLocal	cmp #0
-*				beq .8
-				
+				beq .8
+
 				jsr CODE.LDAI
 				bcs .9
 
@@ -315,12 +315,11 @@ CODE.EmitByte	clc						if Pass 1...
 				.FIN
 
 				>SS
-
 				>PUSHA
 				>PUSHW.G CC.pOutFile
 				>LIBC FPutC
 				>SR
-				
+
 				ply
 				plx
 
@@ -383,7 +382,7 @@ CODE.IDSelect	clc
 				clc
 				adc ZPCCConst
 				tay
-				
+
 				lda PCC.FH+PCC.FH.CONST+1
 				adc ZPCCConst+1
 

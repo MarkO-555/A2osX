@@ -98,7 +98,7 @@ A2osX.S.DISABLE		.EQ $FF				A2osX.GP+64 bytes
 *--------------------------------------
 A2osX.SCRNDEVS	.EQ	A2osX.GP+$40		0=console, 1-8=VT100, 9=GFX
 A2osX.ASCREEN	.EQ	A2osX.GP+$4A		Active Screen
-A2osX.FSID		.EQ A2osX.GP+$4B
+*A2osX.FSID		.EQ A2osX.GP+$4B
 A2osX.KVER		.EQ A2osX.GP+$4C		WORD
 A2osX.bIRQ		.EQ A2osX.GP+$4E
 A2osX.IrqMode	.EQ A2osX.GP+$4F
@@ -523,20 +523,20 @@ S.FD.T.LNK			.EQ 8
 S.FD.T.DSOCK		.EQ 10
 S.FD.T.SSOCK		.EQ 12
 S.FD.T.PIPE			.EQ 14
+*--------------------------------------
 S.FD.PFT		.EQ 1
 *--------------------------------------
 S.FD.REG.REF	.EQ	2
-S.FD.REG.IOBUF	.EQ	3
-S.FD.REG.FPOS	.EQ	4					dword
+S.FD.REG.IOBUF	.EQ	4
+S.FD.REG.FPOS	.EQ	6					dword
 *
 *--------------------------------------
-S.FD.DIR.EL		.EQ 4
-S.FD.DIR.EPB	.EQ 5
-S.FD.DIR.FC		.EQ 6					word
-S.FD.DIR.ACL	.EQ 8					57.00
-S.FD.DIR.UID	.EQ 10
-S.FD.DIR.GID	.EQ 12
-S.FD.DIR.MODE	.EQ 14
+S.FD.DIR.EL		.EQ 6
+S.FD.DIR.EPB	.EQ 7
+S.FD.DIR.FC		.EQ 8					word
+S.FD.DIR.UID	.EQ 10					word
+S.FD.DIR.GID	.EQ 12					word
+S.FD.DIR.MODE	.EQ 14					word
 *
 *--------------------------------------
 S.FD.DEV.BUSID	.EQ 2

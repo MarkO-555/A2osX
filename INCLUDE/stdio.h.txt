@@ -23,27 +23,27 @@ typedef struct {
 	int cnt;
 } FILE;
 
-FILE *fopen(const char*,short int,short int,int);
+FILE *fopen(const char*,int,int,int);
 int fclose(FILE*);
 int fread(void*,size_t,size_t,FILE*);
 int fwrite(void*,size_t,size_t,FILE*);
 
 int fflush(FILE*);
-int fseek(FILE*,long,short int);
-short int feof(FILE*);
+int fseek(FILE*,long,int);
+int feof(FILE*);
 long ftell(FILE*);
 int remove(const char*);
 int rename(const char*,const char*);
 
-int putchar(short int);
-int fputc(short int,FILE*);
+int putchar(int);
+int fputc(int,FILE*);
 int puts(const char*);
 int fputs(const char*,FILE*);
 
 char* fgets(char*,int,FILE*);
-char getchar(void);
-char getc(short int);
-// short int ungetc(short int c, short int );
+int getchar(void);
+int getc(FILE*);
+// int ungetc(int c, FILE*);
 
 int printf(const char*,...);
 int fprintf(FILE*,const char*,...);
@@ -55,6 +55,6 @@ int sscanf(const char*,const char*,...);
 
 #define _STDIO_H_ 1
 #endif
- 
+
 MAN
 TEXT include/stdio.h

@@ -111,11 +111,13 @@ ZP.pRSymBuf		.BS 2
 
 StmtPreOp		.BS 1
 
-ExpState		.BS 1
-ExpState.VinReg		.EQ $10
-ExpState.AonStack	.EQ $20
-ExpState.AinPTR		.EQ $40
-ExpState.VonStack	.EQ $80
+State			.BS 1
+State.LAonStack		.EQ $01
+State.LAnPtr1		.EQ $02
+State.RAonStack		.EQ $10
+State.RAinPtr2		.EQ $20
+State.RVinReg		.EQ $40
+State.RVonStack		.EQ $80
 
 ZS.END			.ED
 *--------------------------------------
@@ -199,7 +201,16 @@ DIR.ELSE.ID		.EQ *-J.CC.DIRS
 				.DA DIR.ELSE
 				.DA DIR.ENDIF
 *--------------------------------------
-J.CC.PREOPS		.DA EXP.Ref
+J.STMT.PREOPS	.DA STMT.Ref
+				.DA STMT.Deref
+				.DA STMT.Abs
+				.DA STMT.Negate
+				.DA STMT.lNot
+				.DA STMT.bNot
+				.DA STMT.PreInc
+				.DA STMT.PreDec
+*--------------------------------------
+J.EXP.PREOPS	.DA EXP.Ref
 				.DA EXP.Deref
 				.DA EXP.Abs
 				.DA EXP.Negate
@@ -208,9 +219,15 @@ J.CC.PREOPS		.DA EXP.Ref
 				.DA EXP.PreInc
 				.DA EXP.PreDec
 *--------------------------------------
-J.CC.POSTOPS	.DA EXP.PostInc
+J.STMT.POSTOPS	.DA STMT.PostInc
+				.DA STMT.PostDec
+				.DA STMT.Array
+				.DA STMT.SU
+				.DA STMT.pSU
+*--------------------------------------
+J.EXP.POSTOPS	.DA EXP.PostInc
 				.DA EXP.PostDec
-				.DA EXP.Idx
+				.DA EXP.Array
 				.DA EXP.SU
 				.DA EXP.pSU
 *--------------------------------------
@@ -305,6 +322,7 @@ L.PCC.GetLAddr2	.DA PCC.GetLAddr2
 L.PCC.GetIAddr2	.DA PCC.GetIAddr2
 L.PCC.GetUAddr2	.DA PCC.GetUAddr2
 L.PCC.PopAddr2	.DA PCC.PopAddr2
+L.PCC.Deref1	.DA PCC.Deref1
 L.PCC.Deref2	.DA PCC.Deref2
 L.PCC.PushDeref2	.DA PCC.PushDeref2
 L.PCC.GetValueA		.DA PCC.GetValueA

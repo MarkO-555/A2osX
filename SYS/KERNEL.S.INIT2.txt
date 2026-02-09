@@ -402,7 +402,7 @@ INIT2.BnkCheck	sta pRWReg
 INIT2.KConfig	>LDYAI MSG.KCREAD
 				jsr X.PrintF
 
-				stz ZPPtr1				A2osX.FSID
+				stz ZPPtr1				ProDOS.FX flag
 
 				jsr MLI.MLIENTRY		Bypass ATALK
 				.DA #MLI.GFINFOEX
@@ -458,9 +458,8 @@ INIT2.KConfig	>LDYAI MSG.KCREAD
 
 .8				jsr X.PrintF
 
-				lda ZPPtr1				A2osX.FSID
+				lda ZPPtr1				ProDOS.FX flag
 
-				sta A2osX.FSID
 				rol						CS if ProDOS.FX
 
 				rts

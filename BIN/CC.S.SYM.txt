@@ -29,7 +29,7 @@ SYM.New.Pass1	jsr SYM.Get
 				lda (ZP.pLSymBuf),y
 				and #SYM.Q.FUNCTION
 				beq .90
-			>DEBUG
+
 				ldy #SYM.Addr+1
 				lda (ZP.pLSymBuf),y
 				bne .90
@@ -388,9 +388,9 @@ SYM.Store		clc
 				.DO _DBG_SYM=1
 			jsr DEBUG.SYMU
 				.FIN
-				
+
 				rts
-				
+
 .8				clc
 				rts
 *--------------------------------------
@@ -651,12 +651,12 @@ SYM.LookupLabelA
 
 				cmp #'R'
 				bne .1
-				
+
 				ldy #0					return fake T/Q
 				lda #0
 				clc
 				rts
-				
+
 .1				ldx #0					return fake address
 				ldy #0
 				clc
@@ -966,7 +966,7 @@ DEBUG.SYM	>PUSHW.G CC.LSymID
 			>PUSHBI 12
 			>LIBC Printf
 			>SR
-		bcs *	
+		bcs *
 *		>DEBUG
 			rts
 *--------------------------------------

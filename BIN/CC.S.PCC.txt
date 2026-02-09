@@ -133,7 +133,7 @@ PCC.FH.RUN		lda #0
 PCC.FH.MAIN		.EQ *-PCC.FH.ORG+1
 
 			jsr $FFFF					jsr main
-				
+
 				tya						returned int in Y,A
 				sec
 				rts
@@ -158,7 +158,7 @@ PCC.SF			.DA #PCC.SF.L
 				dex
 				stx pStack
 *				stx pBase
-PCC.SF.L		.EQ *-PCC.SF-1				
+PCC.SF.L		.EQ *-PCC.SF-1
 *--------------------------------------
 PCC.SL			.DA #PCC.SL.L
 				ldx pStack
@@ -460,6 +460,17 @@ PCC.PopAddr2	.DA #PCC.PopAddr2.L
 				sta ZS.RT.Ptr2+1
 
 PCC.PopAddr2.L	.EQ *-PCC.PopAddr2-1
+*--------------------------------------
+PCC.Deref1		.DA #PCC.Deref1.L
+				ldy #1
+				lda (ZS.RT.Ptr1),y
+				tay
+				lda (ZS.RT.Ptr1)
+
+				sta ZS.RT.Ptr1
+				sty ZS.RT.Ptr1+1
+
+PCC.Deref1.L	.EQ *-PCC.Deref1-1
 *--------------------------------------
 PCC.Deref2		.DA #PCC.Deref2.L
 				ldy #1

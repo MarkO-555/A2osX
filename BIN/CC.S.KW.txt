@@ -647,7 +647,6 @@ KW.RETURN		jsr CC.GetCharNB
 				bcs .99
 
 				>LDYA ZP.pLSymBuf
-
 				jsr EXP.Eval
 				bcs .99
 
@@ -675,7 +674,7 @@ KW.SIZEOF
 *--------------------------------------
 * Input : Value on Stack, Y,A = Type/Qual
 *--------------------------------------
-KW.TestZero		jsr EXP.GetYASizeOfInAX
+KW.TestZero		jsr SYM.GetLSymSizeOf
 				tax
 				cpx #1
 				bne .1

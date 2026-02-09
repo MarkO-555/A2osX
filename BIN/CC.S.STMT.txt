@@ -25,13 +25,12 @@ STMT.Get		jsr CC.GetCharNB
 
 				jmp F.CallNoRetV		func( ... );
 *--------------------------------------
-.20				stz ExpState
+.20				stz State
 
-				jsr EXP.POSTOPS			var++, var[0]... ?
+				jsr STMT.POSTOPS		var++, var[0]... ?
 				bcs .99
 
-				ldx StmtPreOp
-				jsr EXP.PREOPS			apply ++var, ....
+				jsr STMT.PREOPS			apply ++var, ....
 				bcs .99
 
 				jsr CC.GetCharNB
@@ -43,7 +42,7 @@ STMT.Get		jsr CC.GetCharNB
 				jsr CC.LookupAOP		var=, var+= ... ?
 				bcs .90
 
-			cpx #0						TOTO : all AOPS
+			cpx #0						TODO : all AOPS
 			bne *
 *			jsr CODE.DEBUG
 				>LDYA ZP.pLSymBuf
@@ -76,7 +75,7 @@ STMT.Stmt.END	ldy StmtPtr
 
 				cmp #';'				must be ';' on stack....
 				bne STMT.End.9
-				
+
 				jsr STMT.End
 				bcc STMT.Stmt.END
 
@@ -161,7 +160,7 @@ STMT.Close		lda StmtPtr
 				tay
 				lda (StmtStk),y
 				beq .1
-				
+
 				pha
 				iny
 				lda (StmtStk),y
@@ -186,6 +185,343 @@ STMT.Close		lda StmtPtr
 				clc
 
 .99				rts
+*--------------------------------------
+* PREOPS
+*--------------------------------------
+STMT.PREOPS		ldx StmtPreOp
+				bmi .8
+
+				jmp (J.STMT.PREOPS,x)
+
+.8				clc
+				rts
+*--------------------------------------
+STMT.Ref
+				lda #E.CSYN
+				sec
+				rts
+*--------------------------------------
+STMT.Deref		ldy #SYM.Q
+				lda (ZP.pLSymBuf),y
+
+				bit #SYM.Q.PPPOINTER
+				beq .9
+
+				sec
+				sbc #SYM.Q.POINTER
+				sta (ZP.pLSymBuf),y
+
+				jsr SYM.GetAddr1
+				bcs .99
+
+				>LDYA L.PCC.Deref1
+				jsr CODE.EmitPCC
+				bcs .99
+
+				lda #State.LAnPtr1
+				sta State
+
+*				clc
+				rts
+
+.9				lda #E.TMISMATCH
+				sec
+.99				rts
+*--------------------------------------
+STMT.Abs
+				lda #E.CSYN
+				sec
+				rts
+*--------------------------------------
+STMT.Negate
+				lda #E.CSYN
+				sec
+				rts
+*--------------------------------------
+STMT.lNot
+				lda #E.CSYN
+				sec
+				rts
+*--------------------------------------
+STMT.bNot
+				lda #E.CSYN
+				sec
+				rts
+*--------------------------------------
+STMT.PreInc
+				lda #E.CSYN
+				sec
+				rts
+*--------------------------------------
+STMT.PreDec
+				lda #E.CSYN
+				sec
+				rts
+*--------------------------------------
+* POSTOPS
+*--------------------------------------
+STMT.POSTOPS	>LDYA L.CC.POSTOPS
+				jsr CC.LookupOP
+				bcs .8
+
+				jmp (J.STMT.POSTOPS,x)
+
+.8				clc
+				rts
+*--------------------------------------
+STMT.PostInc	lda State
+				bit #State.LAnPtr1
+				bne .1
+
+				jsr SYM.GetAddr1
+				bcs .99
+
+				lda #State.LAnPtr1
+				tsb State
+
+.1				ldy #SYM.Q
+				lda (ZP.pLSymBuf),y
+				and #SYM.Q.AAARRAY+SYM.Q.PPPOINTER
+				bne .8
+
+				lda (ZP.pLSymBuf)	#SYM.T
+				cmp #SYM.T.FLOAT
+				bcs .98
+
+				tay
+
+				lda CC.TYPESIZE-1,y
+				lsr
+				bcc .2
+
+				>LDYA L.PCC.Inc1
+				jmp CODE.EmitPCC
+
+.2				lsr
+				bcc .4
+
+				>LDYA L.PCC.Inc2
+				jmp CODE.EmitPCC
+
+.4				>LDYA L.PCC.Inc4
+				jmp CODE.EmitPCC
+
+
+.8
+
+.98				lda #E.ESYN
+				sec
+.99				rts
+*--------------------------------------
+STMT.PostDec	lda State
+				bit #State.LAnPtr1
+				bne .1
+
+				jsr SYM.GetAddr1
+				bcs .99
+
+				lda #State.LAnPtr1
+				tsb State
+
+.1				ldy #SYM.Q
+				lda (ZP.pLSymBuf),y
+				and #SYM.Q.AAARRAY+SYM.Q.PPPOINTER
+				bne .8
+
+				lda (ZP.pLSymBuf)		#SYM.T
+				cmp #SYM.T.FLOAT
+				bcs .98
+
+				tay
+
+				lda CC.TYPESIZE-1,y
+				lsr
+				bcc .2
+
+				>LDYA L.PCC.Dec1
+				jmp CODE.EmitPCC
+
+.2				lsr
+				bcc .4
+
+				>LDYA L.PCC.Dec2
+				jmp CODE.EmitPCC
+
+.4				>LDYA L.PCC.Dec4
+				jmp CODE.EmitPCC
+
+
+.8
+
+.98				lda #E.ESYN
+				sec
+.99				rts
+*--------------------------------------
+STMT.Array		ldy #SYM.Q
+				lda (ZP.pLSymBuf),y
+
+				bit #SYM.Q.AAARRAY
+				bne STMT.ArrayBounds
+
+				and #SYM.Q.PPPOINTER
+				cmp #SYM.Q.POINTER
+				bne .98
+
+				lda (ZP.pLSymBuf),y
+				eor #SYM.Q.POINTER+SYM.Q.ARRAY
+				sta (ZP.pLSymBuf),y		convert from *type to type[]
+
+				jsr SYM.GetAddr1
+				bcs .99
+
+				>LDYA L.PCC.PushDeref2
+				jsr CODE.EmitPCC
+				bcs .99
+
+				jsr EXP.Array.getIdx	...int16 on stack...
+				bcs .99
+
+				jsr SYM.GetLSymSizeOf
+				cmp #1
+				bne .1
+
+				cpx #0
+				beq .2					sizeof=1, no MUL required
+
+.1				jsr CODE.PUSHAXI		...sizeof on stack...
+				bcs .99
+
+				ldx #FPU.wMUL
+				jsr CODE.FPUCALL		...sizeof*int16...
+				bcs .99
+
+.2				ldx #FPU.wADD
+				jsr CODE.FPUCALL		...add to base address
+				bcs .99
+
+				jsr CC.GetCharNB
+				bcs .97
+
+				cmp #']'
+				bne .97
+
+				jsr CORE.GetNCharNB	skip ']'
+
+				lda #State.LAonStack
+				sta State
+
+				clc
+				rts
+
+.97				lda #E.ESYN
+				sec
+				rts
+
+.98				lda #E.TMISMATCH
+				sec
+.99				rts
+*--------------------------------------
+STMT.ArrayBounds
+				ldy #SYM.A1
+				lda (ZP.pLSymBuf),y
+				iny
+				ora (ZP.pLSymBuf),y
+				beq .1
+
+				jsr EXP.PushAddr		array[int]...
+				bcc .2
+
+				rts
+
+.1				jsr EXP.GetAddr2		array[]...it is a *
+				bcs .9
+
+				>LDYA L.PCC.PushDeref2
+				jsr CODE.EmitPCC
+				bcs .9
+
+.2				jsr EXP.Array.getIdx	...int16 on stack...
+				bcs .9
+
+				jsr SYM.GetLSymSizeOf
+				jsr CODE.PUSHAXI		...sizeof on stack...
+				bcs .9
+
+				ldx #FPU.wMUL
+				jsr CODE.FPUCALL		...sizeof*int16...
+				bcs .9
+
+				ldx #FPU.wADD
+				jsr CODE.FPUCALL		...add to base address
+				bcs .9
+
+.3				jsr CORE.GetNCharNB	skip ']'
+				bcs .98
+
+				cmp #'['
+				bne .8
+
+				jsr CORE.GetNCharNB	skip '['
+				bcs .98
+
+				ldy #SYM.Q
+				lda (ZP.pLSymBuf),y
+				and #SYM.Q.AAARRAY
+				beq .99
+
+				jsr EXP.Array.getIdx	...int16 on stack...
+				bcs .9
+
+				ldy #SYM.A2+1
+				lda (ZP.pLSymBuf),y
+				tax
+				dey
+				lda (ZP.pLSymBuf),y
+				jsr CODE.PUSHAXI		[][SIZE] on stack
+
+				ldx #FPU.wMUL
+				jsr CODE.FPUCALL		[][SIZE] * int16 on stack
+
+				jsr SYM.GetLSymSizeOf
+				jsr CODE.PUSHAXI		...sizeof on stack...
+				bcs .9
+
+				ldx #FPU.wMUL
+				jsr CODE.FPUCALL		...sizeof*int16...
+
+				ldx #FPU.wADD
+				jsr CODE.FPUCALL		...add to base address
+				bcs .9
+
+				jsr CORE.GetNCharNB	skip ']'
+				bcs .98
+
+
+* TODO : [][][]
+
+.8				lda #State.LAonStack
+				sta State
+
+				clc
+				rts
+
+.98				lda #E.ESYN
+				sec
+				rts
+
+.99				lda #E.TMISMATCH
+				sec
+.9				rts
+*--------------------------------------
+STMT.SU
+				lda #E.CSYN
+				sec
+				rts
+*--------------------------------------
+STMT.pSU
+				lda #E.CSYN
+				sec
+				rts
 *--------------------------------------
 MAN
 SAVE usr/src/bin/cc.s.stmt

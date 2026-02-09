@@ -583,10 +583,10 @@ F.StackSave		ldy #SYM.Cnt
 F.StackPushV	bit ZPPtr1+1
 				bpl .8
 
-				lda ExpState
+				lda State
 			beq *
 
-				bit #ExpState.VinReg
+				bit #State.RVinReg
 				beq .8
 
 				jmp CODE.PUSHYA

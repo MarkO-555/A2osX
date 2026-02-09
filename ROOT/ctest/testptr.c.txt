@@ -5,7 +5,7 @@ NEW
 #include <unistd.h>
 #include <md5.h>
 
-void *someptr = NULL; 
+void *someptr = NULL;
 void *pBuf = malloc(256);
 
 int iarray[8];
@@ -14,12 +14,14 @@ int *parray[];
 
 int main(int foo, char *bar[]) {
 
-    puts("Testptr...");
+    int i=0;
+	i--;
+	puts("Testptr...");
 
     printf("someptr = %H:%H, pBuf = %H:%H\r\n", &someptr, someptr, &pBuf, pBuf);
     getchar();
 
-    parray=&iarray;  
+    parray=&iarray;
 
     printf("parray = %H:%H\r\n", &parray, parray);
     getchar();
@@ -27,20 +29,20 @@ int main(int foo, char *bar[]) {
     printf("iarray = %H:%H:%H:%H\r\n", &iarray, iarray,	iarray[0], iarray[1]);
     getchar();
 
-    iarray[0]=513;    
-    iarray[1]=1026;    
+    iarray[0]=513;
+    iarray[1]=1026;
 
     printf("iarray = %H:%H:%H:%H\r\n", &iarray, iarray, iarray[0], iarray[1]);
     getchar();
 
-    *parray[0]=258;    
-    *parray[1]=516;    
+    *parray[0]=258;
+    *parray[1]=516;
 
     printf("parray = %H:%H:%H:%H\r\n", &parray, parray, parray[0], parray[1]);
     getchar();
 
     farray[1][1]=3.14;
-    printf("farray: %e\r\n", farray[1][1]); 
+    printf("farray: %e\r\n", farray[1][1]);
 
     printf("foo = %D, bar = %H:%H:%s:%s\r\n", foo, &bar, bar, bar[0], bar[1]);
     getchar();
@@ -49,24 +51,24 @@ int main(int foo, char *bar[]) {
     printf("MD5=%s\r\n", pBuf);
     getchar();
 
-    getenv("TERM", pBuf);
+    pBuf = getenv("TERM");
     printf("TERM=%s\r\n", pBuf);
     getchar();
 
     setenv("TEST", "Value");
-    getenv("TEST", pBuf);
+    pBuf = getenv("TEST");
     printf("TEST=%s\r\n", pBuf);
     getchar();
 
-    short int hFile = fopen("testptr.c", O_RDONLY, 0, 0); 
-    printf("hFile=%d\r\n", hFile);
+    FILE* pFile = fopen("testptr.c", O_RDONLY, 0, 0);
+    printf("pFile=%d\r\n", pFile);
     int linecnt=0;
 
-    while (NULL == fgets(hFile, pBuf, 255)) {
+    while (NULL == fgets(pBuf, 255, pFile)) {
         linecnt++;
         printf("%5D:%s\r\n", linecnt, pBuf);
         }
-    fclose(hFile);
+    fclose(pFile);
     getchar();
 
     free(pBuf);
